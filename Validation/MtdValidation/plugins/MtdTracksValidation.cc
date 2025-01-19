@@ -252,6 +252,10 @@ private:
 
   MonitorElement* meTrackResTot_;
   MonitorElement* meTrackPullTot_;
+  MonitorElement* meTrackResBtl_;
+  MonitorElement* meTrackPullBtl_;
+  MonitorElement* meTrackResEtl_;
+  MonitorElement* meTrackPullEtl_;
   MonitorElement* meTrackResTotvsMVAQual_;
   MonitorElement* meTrackPullTotvsMVAQual_;
 
@@ -1056,6 +1060,14 @@ void MtdTracksValidation::analyze(const edm::Event& iEvent, const edm::EventSetu
 
         // time res and time pull
         if (Sigmat0Safe[trackref] != -1.) {
+          if (isBTL) {
+            meTrackResBtl_->Fill(dT);
+            meTrackPullBtl_->Fill(pullT);
+          }
+          if (isETL) {
+            meTrackResEtl_->Fill(dT);
+            meTrackPullEtl_->Fill(pullT);
+          }
           if (isBTL || isETL) {
             meTrackResTot_->Fill(dT);
             meTrackPullTot_->Fill(pullT);
@@ -1578,6 +1590,16 @@ void MtdTracksValidation::bookHistograms(DQMStore::IBooker& ibook, edm::Run cons
       "TrackRes", "t_{rec} - t_{sim} for LV associated tracks matched to TP; t_{rec} - t_{sim} [ns] ", 120, -0.15, 0.15);
   meTrackPullTot_ = ibook.book1D(
       "TrackPull", "Pull for LV associated tracks matched to TP; (t_{rec}-t_{sim})/#sigma_{t}", 50, -5., 5.);
+  meTrackResBtl_ = ibook.book1D(
+      "TrackResBtl", "t_{rec} - t_{sim} for LV associated tracks matched to TP; t_{rec} - t_{sim} [ns] ", 120, -0.15, 0.15);
+  meTrackPullBtl_ = ibook.book1D(
+      "TrackPullBtl", "Pull for LV associated tracks matched to TP; (t_{rec}-t_{sim})/#sigma_{t}", 50, -5., 5.);
+  meTrackResEtl_ = ibook.book1D(
+      "TrackResEtl", "t_{rec} - t_{sim} for LV associated tracks matched to TP; t_{rec} - t_{sim} [ns] ", 120, -0.15, 0.15);
+  meTrackPullEtl_ = ibook.book1D(
+      "TrackPullEtl", "Pull for LV associated tracks matched to TP; (t_{rec}-t_{sim})/#sigma_{t}", 50, -5., 5.);
+
+
   meTrackResTotvsMVAQual_ = ibook.bookProfile(
       "TrackResvsMVA",
       "t_{rec} - t_{sim} for LV associated tracks matched to TP vs MVA Quality; MVAQual; t_{rec} - t_{sim} [ns] ",

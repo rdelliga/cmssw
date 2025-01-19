@@ -111,6 +111,7 @@ private:
   MonitorElement* meCluOccupancy_[4];
 
   MonitorElement* meTimeRes_;
+  MonitorElement* meTimePull_;
   MonitorElement* meEnergyRes_;
   MonitorElement* meTPullvsE_;
   MonitorElement* meTPullvsEta_;
@@ -145,6 +146,8 @@ private:
   static constexpr float binWidthTot_ = 1.3;  // in MIP units
 
   MonitorElement* meTimeResTot_[2][nBinsTot_];
+  MonitorElement* meTimeResvsTOT_[2];
+  MonitorElement* meTimePullvsTOT_[2];
 
   static constexpr int nBinsEta_ = 26;
   static constexpr float binWidthEta_ = 0.05;
@@ -266,6 +269,8 @@ void EtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
 
   // --- Loop over the ELT RECO hits
   unsigned int n_reco_etl[4] = {0, 0, 0, 0};
+  auto etlUncalibRecHitsHandle = makeValid(iEvent.getHandle(etlUncalibRecHitsToken_));
+
   for (const auto& recHit : *etlRecHitsHandle) {
     double weight = 1.0;
     ETLDetId detId = recHit.id();
@@ -338,13 +343,59 @@ void EtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
         float time_res = recHit.time() - m_etlSimHits[idet][pixelId].time;
 
         meTimeRes_->Fill(time_res);
+        meTimePull_->Fill(time_res/recHit.timeError());
 
         meTPullvsEta_->Fill(std::abs(global_point.eta()), time_res / recHit.timeError());
         meTPullvsE_->Fill(m_etlSimHits[idet][pixelId].energy, time_res / recHit.timeError());
+        
+        
+        // --- Loop over the ETL Uncalibrated RECO hits
+      for (const auto& uRecHit : *etlUncalibRecHitsHandle) {
+        ETLDetId udetId = uRecHit.id();
+        if (detId != udetId) continue;
+        int uidet = udetId.zside() + udetId.nDisc();
+
+        DetId ugeoId = udetId.geographicalId();
+        const MTDGeomDet* uthedet = geom->idToDet(ugeoId);
+        const ProxyMTDTopology& utopoproxy = static_cast<const ProxyMTDTopology&>(uthedet->topology());
+        const RectangularMTDTopology& utopo = static_cast<const RectangularMTDTopology&>(utopoproxy.specificTopology());
+
+        Local3DPoint ulocal_point(utopo.localX(uRecHit.row()), utopo.localY(uRecHit.column()), 0.);
+        //const auto& global_point = thedet->toGlobal(local_point);
+
+        std::pair<uint8_t, uint8_t> upixel = geomUtil.pixelInModule(udetId, ulocal_point);
+        mtd_digitizer::MTDCellId upixelId(udetId.rawId(), upixel.first, upixel.second);
+
+        // --- Skip UncalibratedRecHits not matched to SimHits
+        if (m_etlSimHits[uidet].count(upixelId) == 0)
+          continue;
+        
+        if (upixelId != pixelId) continue;
+
+        if (uthedet == nullptr)
+          throw cms::Exception("EtlLocalRecoValidation") << "GeographicalID: " << std::hex << ugeoId.rawId() << " ("
+                                                         << udetId.rawId() << ") is invalid!" << std::dec << std::endl;
+
+        // --- Fill the histograms
+
+        if (uRecHit.amplitude().first < hitMinAmplitude_)
+          continue;
+
+
+        int uiside = (udetId.zside() == -1 ? 0 : 1);
+
+        // amplitude histograms
+        meTimeResvsTOT_[uiside]->Fill(uRecHit.amplitude().first, time_res);
+        meTimePullvsTOT_[uiside]->Fill(uRecHit.amplitude().first, time_res/recHit.timeError());
+
+      }  // uRecHit loop
+        
+        
       }
     }
 
     n_reco_etl[idet]++;
+
   }  // recHit loop
 
   for (int i = 0; i < 4; i++) {
@@ -558,7 +609,7 @@ void EtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
   // --- Loop over the ETL Uncalibrated RECO hits
   if (optionalPlots_) {
     if (uncalibRecHitsPlots_) {
-      auto etlUncalibRecHitsHandle = makeValid(iEvent.getHandle(etlUncalibRecHitsToken_));
+      //auto etlUncalibRecHitsHandle = makeValid(iEvent.getHandle(etlUncalibRecHitsToken_));
 
       for (const auto& uRecHit : *etlUncalibRecHitsHandle) {
         ETLDetId detId = uRecHit.id();
@@ -599,7 +650,7 @@ void EtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
           totBin = nBinsTot_ - 1;
 
         meTimeResTot_[iside][totBin]->Fill(time_res);
-
+        
         // eta histograms
 
         int etaBin = (int)((fabs(global_point.eta()) - etaMin_) / binWidthEta_);
@@ -758,6 +809,13 @@ void EtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
       3.2,
       0.,
       100.);
+  
+  meTimePull_ = ibook.book1D("EtlTimePull", "ETL time pull;T_{RECO}-T_{SIM}", 100, -4., 4.);
+  meTimeResvsTOT_[0] = ibook.bookProfile("TimeResvsTOTplus", "ETL time res vs TOT (+); TOT [ns]; (T_{RECO}-T_{SIM})", 50, 0., 10., -0.5, 0.5);
+  meTimeResvsTOT_[1] = ibook.bookProfile("TimeResvsTOTminus", "ETL time res vs TOT (-); TOT [ns]; (T_{RECO}-T_{SIM})", 50, 0., 10., -0.5, 0.5);
+  meTimePullvsTOT_[0] = ibook.bookProfile("TimePullvsTOTplus", "ETL time pull vs TOT (+); TOT [ns]; (T_{RECO}-T_{SIM})/#sigma_{T_{RECO}}", 50, 0., 10., -4., 4.);
+  meTimePullvsTOT_[1] = ibook.bookProfile("TimePullvsTOTminus", "ETL time pull vs TOT (-); TOT [ns]; (T_{RECO}-T_{SIM})/#sigma_{T_{RECO}}", 50, 0., 10., -4., 4.);
+ 
   meHitTvsPhi_[1] = ibook.bookProfile("EtlHitTvsPhiZnegD2",
                                       "ETL RECO time vs #phi (-Z, Second Disk);#phi_{RECO} [rad];ToA_{RECO} [ns]",
                                       50,

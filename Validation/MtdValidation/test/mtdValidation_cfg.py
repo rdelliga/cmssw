@@ -10,7 +10,7 @@ process.load('Configuration.EventContent.EventContent_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
 
-process.load("Configuration.Geometry.GeometryExtended2026D110Reco_cff")
+process.load("Configuration.Geometry.GeometryExtendedRun4D110Reco_cff")
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
@@ -27,12 +27,12 @@ process.options.numberOfConcurrentLuminosityBlocks = 0
 process.options.eventSetup.numberOfConcurrentIOVs = 1
 
 process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
-    reportEvery = cms.untracked.int32(10),
+    reportEvery = cms.untracked.int32(1),
 )
 
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
-        'file:step3.root'
+        '/store/relval/CMSSW_14_2_0_pre4/RelValTTbar_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RecycledGS_2026D110_noPU-v1/2590000/216da6d6-e436-44cf-beb7-f823dfc6f1f7.root'
     )
 )
 
@@ -59,7 +59,8 @@ process.load("Validation.MtdValidation.vertices4DValid_cfi")
 # process.btlDigiHitsValid.optionalPlots = True
 # process.etlDigiHitsValid.optionalPlots = True
 # process.btlLocalRecoValid.optionalPlots = True
-# process.etlLocalRecoValid.optionalPlots = True
+process.etlLocalRecoValid.optionalPlots = True
+process.etlLocalRecoValid.UncalibRecHitsPlots = True
 # process.mtdTracksValid.optionalPlots = True
 # process.vertices4DValid.optionalPlots = True
 
