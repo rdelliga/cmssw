@@ -11,6 +11,8 @@
      [Notes on implementation]
 */
 
+#define EDM_ML_DEBUG
+
 #include <string>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -75,9 +77,9 @@ private:
   MonitorElement* meHitEnergy_;
 
   static constexpr int nRU_ = 6;
-  static constexpr double logE_min = -3;
+  static constexpr double logE_min = -2;
   static constexpr double logE_max = 2;
-  static constexpr double n_bin_logE = 100;
+  static constexpr double n_bin_logE = 40;
 
   MonitorElement* meHitLogEnergy_;
   MonitorElement* meHitMultCell_;
@@ -376,6 +378,11 @@ void BtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
     double th_logE = logE_min + i * bin_w_logE;
     // --- Loop over the BTL sensor modules
     for (const auto& module : modules) {
+      #ifdef EDM_ML_DEBUG
+      LogTrace("BtlSimHitsValidation") << "Global SM Id: " << module.first << " energy th (Mev): " << i << ", " << th_logE
+                                       << ", " << pow(10, th_logE) << std::endl;
+      int count_cell = 0;
+      #endif
       bool SM_bool = false; // Check if a SM has at least a crystal above threshold
       int crystal_count = 0; // Count crystals above threshold in this module
       int SM_globalRunit = -1; // globalRunit for the SM
@@ -386,6 +393,16 @@ void BtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
         }
         BTLDetId detId(cell.first);
         SM_globalRunit = detId.globalRunit()-1;
+        #ifdef EDM_ML_DEBUG
+        count_cell++;
+        DetId geoId = detId.geographicalId(MTDTopologyMode::crysLayoutFromTopoMode(topology->getMTDTopologyMode()));
+        std::pair<uint32_t, uint32_t> SMIndex = topology->btlIndex(geoId.rawId()); // Get phi-eta index
+        LogTrace("BtlSimHitsValidation") << "cell: " << std::setw(2) << count_cell << " raw id: "
+                                         << detId.rawId() << " (phi, eta): (" << SMIndex.first << ", "
+                                         << SMIndex.second  << ") RU: " << detId.globalRunit()-1
+                                         << " energy (MeV): " << ene_tot_cell << " above th: "
+                                         << SM_bool << std::endl;
+        #endif
         if (log10(ene_tot_cell) > th_logE) {
           SM_bool = true;
           crystal_count++;
