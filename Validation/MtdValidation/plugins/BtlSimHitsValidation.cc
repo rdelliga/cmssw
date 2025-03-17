@@ -379,9 +379,8 @@ void BtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
     // --- Loop over the BTL sensor modules
     for (const auto& module : modules) {
       #ifdef EDM_ML_DEBUG
-      LogTrace("BtlSimHitsValidation") << "Global SM Id: " << module.first << " energy th (Mev): " << i << ", " << th_logE
-                                       << ", " << pow(10, th_logE) << std::endl;
-      int count_cell = 0;
+      LogTrace("BtlSimHitsValidation") << "Global SM Id: " << module.first << " th_logE: " << std::setprecision(2) << th_logE
+                                       << " energy th (Mev): " << std::setprecision(4) << pow(10, th_logE) << std::endl;
       #endif
       bool SM_bool = false; // Check if a SM has at least a crystal above threshold
       int crystal_count = 0; // Count crystals above threshold in this module
@@ -394,14 +393,14 @@ void BtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
         BTLDetId detId(cell.first);
         SM_globalRunit = detId.globalRunit()-1;
         #ifdef EDM_ML_DEBUG
-        count_cell++;
+        bool cell_above_th = false;
+        if (log10(ene_tot_cell) > th_logE) cell_above_th = true;
         DetId geoId = detId.geographicalId(MTDTopologyMode::crysLayoutFromTopoMode(topology->getMTDTopologyMode()));
         std::pair<uint32_t, uint32_t> SMIndex = topology->btlIndex(geoId.rawId()); // Get phi-eta index
-        LogTrace("BtlSimHitsValidation") << "cell: " << std::setw(2) << count_cell << " raw id: "
-                                         << detId.rawId() << " (phi, eta): (" << SMIndex.first << ", "
-                                         << SMIndex.second  << ") RU: " << detId.globalRunit()-1
-                                         << " energy (MeV): " << ene_tot_cell << " above th: "
-                                         << SM_bool << std::endl;
+        LogTrace("BtlSimHitsValidation") << "cell raw id: " << detId.rawId() << " (phi, eta): ("
+                                         << SMIndex.first << ", " << SMIndex.second  << ") RU: "
+                                         << detId.globalRunit()-1 << " energy (MeV): " << std::setprecision(4)
+                                         << std::setw(8) << ene_tot_cell <<  " above th: " << cell_above_th << std::endl;
         #endif
         if (log10(ene_tot_cell) > th_logE) {
           SM_bool = true;
@@ -410,6 +409,10 @@ void BtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
           meHitMultCellRUSlice_[SM_globalRunit]->Fill(th_logE + bin_w_logE / 2);
         }
       }
+      #ifdef EDM_ML_DEBUG
+      LogTrace("BtlSimHitsValidation") << "SM above th: " << SM_bool << std::endl;
+      LogTrace("BtlSimHitsValidation") << "-----------------------------------------------------------------------" << std::endl;
+      #endif
       meHitMultCellperSMvsE_->Fill(th_logE + bin_w_logE / 2, crystal_count);
       meHitMultCellperSMvsERUSlice_[SM_globalRunit]->Fill(th_logE + bin_w_logE / 2, crystal_count);
       // --- Check if a SM has at least a crystal above threshold

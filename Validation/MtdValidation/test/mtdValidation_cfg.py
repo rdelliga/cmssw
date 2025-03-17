@@ -34,10 +34,10 @@ process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T33', ''
 process.load('RecoLocalFastTime.FTLClusterizer.MTDCPEESProducer_cfi')
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1) )
 
 #Setup FWK for multithreaded
-process.options.numberOfThreads = 4
+process.options.numberOfThreads = 1
 process.options.numberOfStreams = 0
 process.options.numberOfConcurrentLuminosityBlocks = 0
 process.options.eventSetup.numberOfConcurrentIOVs = 1
